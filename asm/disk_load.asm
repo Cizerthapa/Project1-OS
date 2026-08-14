@@ -1,68 +1,64 @@
 disk_load_first_half:
-	pusha 
-	push dx			; number of sectors (input parameter)
+    pusha
+    xor ax, ax
+    mov es, ax
 
-	mov ah, 0x02 	; read function 
-	mov al, dh 		; number of sectors
-	mov dl, 0x00 	; drive number
-	mov dh, 0x01 	; head number
-	mov ch, 0x00 	; cylinder number  
-	mov cl, 0x07 	; sector number 
+    ; Track 1: Cyl=0, Head=1, Sector=7, 12 sectors
+    mov ah, 0x02
+    mov al, 12
+    mov dl, [boot_drive]
+    mov dh, 1
+    mov ch, 0
+    mov cl, 7
+    int 0x13
+    jc .error
+    cmp al, 12
+    jne .error
 
-	; read data to [es:bx] 
-	int 0x13
-	jc error 		; carry bit is set -> error
+    add bx, 0x1800
 
-	pop dx 
-	cmp al, dh 		; read correct number of sectors
-	jne error 
+    ; Track 2: Cyl=1, Head=0, Sector=1, 18 sectors
+    mov ah, 0x02
+    mov al, 18
+    mov dl, [boot_drive]
+    mov dh, 0
+    mov ch, 1
+    mov cl, 1
+    int 0x13
+    jc .error
+    cmp al, 18
+    jne .error
 
-	popa 
-	ret 
+    add bx, 0x2400
 
-disk_load_second_half:
-	pusha 
-	push dx			; number of sectors (input parameter)
+    ; Track 3: Cyl=1, Head=1, Sector=1, 18 sectors
+    mov ah, 0x02
+    mov al, 18
+    mov dl, [boot_drive]
+    mov dh, 1
+    mov ch, 1
+    mov cl, 1
+    int 0x13
+    jc .error
+    cmp al, 18
+    jne .error
 
-	mov ah, 0x02 	; read function 
-	mov al, dh 		; number of sectors
-	mov dl, 0x00 	; drive number
-	mov dh, 0x00 	; head number
-	mov ch, 0x02 	; cylinder number  
-	mov cl, 0x07 	; sector number 
+    add bx, 0x2400
 
-	; read data to [es:bx] 
-	int 0x13
-	jc error 		; carry bit is set -> error
+    ; Track 4: Cyl=2, Head=0, Sector=1, 6 sectors
+    mov ah, 0x02
+    mov al, 6
+    mov dl, [boot_drive]
+    mov dh, 0
+    mov ch, 2
+    mov cl, 1
+    int 0x13
+    jc .error
+    cmp al, 6
+    jne .error
 
-	pop dx 
-	cmp al, dh 		; read correct number of sectors
-	jne error 
+    popa
+    ret
 
-	popa 
-	ret 
-
-error:
-	mov bx, error_msg
-	call print 
-	jmp $
-
-print:
-	pusha 
-
-loop:
-	mov al, [bx]
-	cmp al, 0 
-	je end 
-
-	mov ah, 0x0e 
-	int 0x10 	; print 
-
-	add bx, 1	; next address
-	jmp loop 
-
-end:
-	popa 
-	ret 
-
-error_msg: db "Error", 0 
+.error:
+    jmp $

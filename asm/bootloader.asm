@@ -29,11 +29,12 @@ volumeLabel				db "BOOT FLOPPY"
 systemID				db "FAT16   "
 
 _start:
-	mov bp, 0x8000		; Setup stack and frame pointers
-	mov sp, bp
-	call load_kernel	; Load the kernel
-	call switch			; Switch to protected mode
-	jmp $
+    mov [boot_drive], dl
+    mov bp, 0x8000
+    mov sp, bp
+    call load_kernel
+    call switch
+    jmp $
 
 %include "./asm/disk_load.asm"
 %include "./asm/gdt.asm"
@@ -41,37 +42,29 @@ _start:
 
 [bits 16]
 load_kernel:
-	; Load the first half of our kernel
-	mov bx, kernel_offset 
-	mov dh, 54
-	call disk_load_first_half		
+    ; Reset disk controller (required by SeaBIOS)
+    mov ah, 0x00
+    mov dl, [boot_drive]
+    int 0x13
 
-	; It would be nice if we could load the second half of our kernel
-	; The second half of our kernel cannot be loaded right now
-	; The reason why is our kernel is 54 sectors loaded into address 0x1000
-	; Reading 55 sectors or more will overwrite this assembly code here at 0x7C00
-	;mov bx, kernel_offset
-	;add bx, 0x6C00
-	;mov dh, 16
-	;call disk_load_second_half
+    ; Load kernel
+    mov bx, kernel_offset 
+    mov dh, 54
+    call disk_load_first_half        
 
-	; Put your code here to disable the blinking cursor
-	; The blinking cursor can only be disabled in real mode using BIOS interrupt int 0x10
-
-	; Int 0x10 AH = 0x01 is required to stop the blinking cursor
-	; Int 0x10 can only be used in REAL MODE
-	; CX = 0x2607 selects a non-blinking cursor
-	mov ah, 0x01
-	mov ch, 0x26
-	mov cl, 0x07
-	int 0x10
-	
-	ret
+    ; Disable blinking cursor
+    mov ah, 0x01
+    mov ch, 0x26
+    mov cl, 0x07
+    int 0x10
+    
+    ret
 
 [bits 32]
 pmode:
 	call kernel_offset
 	jmp $
 
+boot_drive db 0
 times 510 - ($ - $$) db 0
 db 0x55, 0xaa

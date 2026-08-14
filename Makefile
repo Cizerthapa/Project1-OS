@@ -42,14 +42,19 @@ KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 # OS Image
 OS_IMG = $(BUILD_DIR)/os.img
 
-# Always wipe project*.o on every invocation
-$(shell rm -f $(BUILD_DIR)/project*.o)
+# The selected project is baked into the objects via -DPROJECT, which make
+# cannot see in the source timestamps. Keep the value in a stamp file and
+# rewrite it whenever it changes, so every object gets rebuilt.
+PROJECT_STAMP = $(BUILD_DIR)/project.stamp
+$(shell mkdir -p $(BUILD_DIR); \
+	[ "$$(cat $(PROJECT_STAMP) 2>/dev/null)" = "$(PROJECT)" ] || echo "$(PROJECT)" > $(PROJECT_STAMP))
 
 # Targets
 all: $(OS_IMG)
 
 $(OS_IMG): $(BOOTLOADER_BIN) $(FAT_BIN) $(ROOT_DIR_BIN) $(KERNEL_BIN)
 	cat $(BOOTLOADER_BIN) $(FAT_BIN) $(ROOT_DIR_BIN) $(KERNEL_BIN) > $(OS_IMG)
+	truncate -s 1474560 $@
 
 $(KERNEL_BIN): $(KERNEL_ENTRY_OBJ) $(C_OBJECTS) $(INTERRUPT_OBJ)
 	$(LD) -m elf_i386 -s -o $@ -Ttext 0x1000 $^ --oformat binary
@@ -59,10 +64,10 @@ $(KERNEL_BIN): $(KERNEL_ENTRY_OBJ) $(C_OBJECTS) $(INTERRUPT_OBJ)
 		exit 1; \
 	fi
 
-$(BUILD_DIR)/%.o: $(PRJ_DIR)/%.c
+$(BUILD_DIR)/%.o: $(PRJ_DIR)/%.c $(PROJECT_STAMP)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(PROJECT_STAMP)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(ROOT_DIR_BIN): $(ROOT_DIR_ASM)
@@ -82,3 +87,9 @@ $(INTERRUPT_OBJ): $(INTERRUPT_ASM)
 
 clean:
 	rm -rf $(BUILD_DIR)/*
+
+qemu:
+	qemu-system-i386 -drive file=$(OS_IMG),format=raw,if=floppy
+
+bochs:
+	bochs -q -f ./config.bochsrc
