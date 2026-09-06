@@ -16,6 +16,7 @@ static int cursorRow = 0;
 int kernel()
 {
 	// Print hello world to the display
+	print("Hello World!\n");
 	return 0;
 }
 #endif
@@ -23,34 +24,47 @@ int kernel()
 // Setting the cursor does not display anything visually
 // Setting the cursor is simply used by putchar() to find where to print next
 // This can also be set independently of putchar() to print at any x, y coordinate on the screen
-int setcursor(int x, int y)
+void setcursor(int x, int y)
 {
-	(void)x; // Remove this when implementing your function
-	(void)y; // Remove this when implementing your function
-	(void)cursorCol; // Remove this when implementing your function
-	(void)cursorRow; // Remove this when implementing your function
-	return 0;
+    cursorCol = x;
+    cursorRow = y;
 }
 
 // Using a pointer to video memory we can put characters to the display
 // Every two addresses contain a character and a color
 char putchar(char character)
 {
-	return character;
+    if (character == '\n') {
+        setcursor(0, cursorRow + 1);
+    } else {
+        char *vram = (char *)VIDEO_MEM;
+        int offset = (cursorRow * SCREEN_WIDTH + cursorCol) * 2;
+
+        vram[offset] = character;
+        vram[offset + 1] = TEXT_COLOR;
+
+        setcursor(cursorCol + 1, cursorRow);
+    }
+    return character;
 }
 
 // Print the character array (string) using putchar()
 // Print until we find a NULL terminator (0)
-int print(char string[]) 
+int print(char *s)
 {
-	(void)string; // Remove this when implementing your function
-	// Use character count to track how many characters we print
-	int characterCount = 0;
-	return characterCount;
+    while (*s)
+        putchar(*s++);
+
+    return 0;
 }
 
 // Clear the screen by placing a ' ' character in every character location
 void clearscreen()
 {
-	return;
+    short *vram = (short *)VIDEO_MEM;
+
+    for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++)
+        vram[i] = 0x0720;
+
+    setcursor(0, 0);
 }
