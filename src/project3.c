@@ -21,23 +21,65 @@ void proca()
     exit();
 }
 
+void procb()
+{
+    putchar('B');
+    yield();
+    putchar('B');
+    exit();
+}
+
+void procc()
+{
+    putchar('C');
+    yield();
+    putchar('C');
+    yield();
+    putchar('C');
+    yield();
+    putchar('C');
+    exit();
+}
+
+void procd()
+{
+    putchar('D');
+    yield();
+    putchar('D');
+    yield();
+    putchar('D');
+    exit();
+}
+
+void proce()
+{
+    putchar('E');
+    yield();
+    putchar('E');
+    exit();
+}
+
 void prockernel()
 {
     print("Kernel process has started...\n");
 
-	// Create the user processes
-	createuserprocess(proca, (void *) 0x10000);
+    // Create the user processes
+    createuserprocess(proca, (void *)0x10000);
+    createuserprocess(procb, (void *)0x11000);
+    createuserprocess(procc, (void *)0x12000);
+    createuserprocess(procd, (void *)0x13000);
+    createuserprocess(proce, (void *)0x14000);
 
-	// Schedule the next process
-	int userprocs = ready_process_count();
+    // Schedule the next process
+    int userprocs = ready_process_count();
 
-	// As long as we have ready user processes to run
-	while(userprocs > 0)
-	{
-		// Yield to them
-		yield();
-		userprocs = ready_process_count();
-	}
+    // As long as we have ready user processes to run
+    while (userprocs > 0)
+    {
+        // Yield to them
+        yield();
+        userprocs = ready_process_count();
+    }
 
     print("\nKernel process has exited...\n");
     exit();
@@ -55,8 +97,38 @@ int kernel()
 // Selection must be made from the processes array (proc_t processes[])
 int schedule()
 {
-    int count = 0;
-    return count;
+    int next_pid;
+    int count;
+
+    // Start after the last process
+    if (prevprocess == 0)
+    {
+        next_pid = 1;
+    }
+    else
+    {
+        next_pid = prevprocess->pid + 1;
+    }
+
+    for (count = 0; count < MAX_PROCS; count++)
+    {
+        // agai if at the end
+        if (next_pid >= MAX_PROCS)
+        {
+            next_pid = 1;
+        }
+
+        //he next ready process
+        if (processes[next_pid].status == PROC_STATUS_READY)
+        {
+            nextprocess = &processes[next_pid];
+            return 1;
+        }
+
+        next_pid++;
+    }
+
+    return 0;
 }
 
 // Yield the current process
@@ -66,6 +138,19 @@ int schedule()
 // The next process should have already been selected via scheduling
 void yield()
 {
+    runningprocess->status = PROC_STATUS_READY;
+
+    if (runningprocess->type == PROC_TYPE_USER)
+    {
+        prevprocess = runningprocess; // Remember the last process
+        nextprocess = kernelprocess;
+    }
+    else
+    {
+        schedule();
+    }
+
+    contextswitch();
 }
 
 // Terminate the process that is currently running (proc_t current)
@@ -73,8 +158,19 @@ void yield()
 // Context switch to the kernel process
 void exit()
 {
-}
+    // Mark current process as finished // how
+    runningprocess->status = PROC_STATUS_TERMINATED;
+    if (runningprocess->type == PROC_TYPE_USER)
+    {
+        //Remembers the last process
+        prevprocess = runningprocess;
+        // the Kernel runs next
+        nextprocess = kernelprocess;
+        contextswitch();// to kernel
+    }
 
+    // kernel just return
+}
 // Create a new user process
 // When the process is eventually ran, start executing from the function provided (void *func)
 // Initialize the stack top and base at location (void *stack)
@@ -82,7 +178,24 @@ void exit()
 // Store the newly created process inside the processes array (proc_t processes[])
 int createuserprocess(void *func, void *stack)
 {
-    (void)func; // Remove this when implementing your function
-    (void)stack; // Remove this when implementing your function
+    proc_t *process;
+
+    if (process_index >= MAX_PROCS)
+    {
+        return -1;
+    }
+    // Gets the next process
+    process = &processes[process_index];
+
+    //Set ups the process
+    process->pid    = process_index;
+    process->type   = PROC_TYPE_USER;
+    process->status = PROC_STATUS_READY;
+    process->eip    = func;
+    process->esp    = stack;
+    process->ebp    = stack;
+
+    // Moving to the next process
+    process_index++;
     return 0;
 }
