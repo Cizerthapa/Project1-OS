@@ -24,10 +24,10 @@ static char keymap[128] = {
 	[0x14] = 't',
 	[0x16] = 'u',
 	[0x2F] = 'v',
-	[0x2C] = 'w',
-	[0x2B] = 'x',
+	[0x11] = 'w',
+	[0x2D] = 'x',
 	[0x15] = 'y',
-	[0x2D] = 'z',
+	[0x2C] = 'z',
 	[0x02] = '1',
 	[0x03] = '2',
 	[0x04] = '3',
@@ -41,6 +41,9 @@ static char keymap[128] = {
 	[0x1C] = '\n',
 	[0x39] = ' ',
 	[0x0E] = '\t',
+	[0x34] = '.',   
+	[0x0C] = '-',   
+	[0x35] = '/',   
 };
 
 #if PROJECT == 2
@@ -95,9 +98,12 @@ void scan(char string[])
 	// Keep reading characters until Enter is pressed
 	c = getchar();
 	while (c != '\n') {
-		putchar(c);    // Shows the character on screen
-		string[i] = c; // Store it in the string
-		i++;
+		if (c != 0)        // skip unmapped keys (getchar returns 0 for them)
+		{
+			putchar(c);    // Shows the character on screen
+			string[i] = c; // Store it in the string
+			i++;
+		}
 		c = getchar();
 	}
 
