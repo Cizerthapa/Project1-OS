@@ -380,6 +380,7 @@ void shellHelp()
 	print("cd *name* - Changes the working directory to the directory with the specified name.\n");
 	print("ls - Lists the files and directories in the working directory.\n");
 	print("help - Displays this information.\n");
+	print("clear - Clears the screen.\n");
 	print("quit - Exits the shell process and the operating system halts.\n");
 
 	return;
@@ -434,6 +435,7 @@ void procshell()
 		else if (stringcompare(command, "cd",     2)) shellChangeDirectory(arg);
 		else if (stringcompare(command, "ls",     2)) list();
 		else if (stringcompare(command, "help",   4)) shellHelp();
+		else if (stringcompare(command, "clear",  5)) clearscreen();
 		else if (stringcompare(command, "quit",   4))
 		{
 			print("Quitting...\n");
